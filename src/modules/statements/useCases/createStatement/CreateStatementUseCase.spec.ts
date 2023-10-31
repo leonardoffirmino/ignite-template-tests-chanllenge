@@ -5,6 +5,7 @@ import { InMemoryStatementsRepository } from "../../repositories/in-memory/InMem
 import { GetBalanceUseCase } from "../getBalance/GetBalanceUseCase";
 import { CreateStatementUseCase } from "./CreateStatementUseCase";
 import { OperationType } from "./CreateStatementController";
+import { AppError } from "../../../../shared/errors/AppError";
 
 
 
@@ -55,6 +56,90 @@ describe("Create statement", () => {
 
     expect(createdStatement).toHaveProperty("type", statement.type);
     expect(createdStatement).toHaveProperty("amount", statement.amount);
+  });
+
+
+  it("should be able to withdraw credit from to user account", async () => {
+    const user: ICreateUserDTO = {
+      name: "Test",
+      email: "test@test.com.br",
+      password: "1234",
+    };
+
+    const user_id = <string>(await createUserUseCase.execute(user)).id;
+
+
+    await createStatementUseCase.execute({
+      user_id,
+      type: "withdraw" as OperationType,
+      amount: 120,
+      description: "test withdraw",
+    });
+
+
+    await createStatementUseCase.execute({
+      user_id,
+      type: "withdraw" as OperationType,
+      amount: 120,
+      description: "test withdraw",
+    });
+
+    const balance = await getBalanceUseCase.execute({ user_id });
+
+
+    expect(balance).toHaveProperty("balance", 0);
+
+
+  });
+
+
+  it("should not be able to withdraw credit from to user account", async () => {
+    expect(async () => {
+      const user_id = "fake_user";
+
+
+      await createStatementUseCase.execute({
+        user_id,
+        type: "withdraw" as OperationType,
+        amount: 120,
+        description: "test withdraw",
+      });
+    }).rejects.toBeInstanceOf(AppError);
+  });
+
+
+  it("should not be able to make a deposit in an unexistent user account", async () => {
+    expect(async () => {
+      const user_id = "fake_user";
+
+
+      await createStatementUseCase.execute({
+        user_id,
+        type: "withdraw" as OperationType,
+        amount: 120,
+        description: "test withdraw",
+      });
+    }).rejects.toBeInstanceOf(AppError);
+  });
+
+
+  it("should not be able to withdraw credits from to user account without credits", async () => {
+    expect(async () => {
+      const user: ICreateUserDTO = {
+        name: "test",
+        email: "test@test.com",
+        password: "1234",
+      };
+
+      const user_id = <string>(await createUserUseCase.execute(user)).id;
+
+      await createStatementUseCase.execute({
+        user_id,
+        type: "withdraw" as OperationType,
+        amount: 120,
+        description: "test withdraw",
+      });
+    }).rejects.toBeInstanceOf(AppError);
   });
 
 
